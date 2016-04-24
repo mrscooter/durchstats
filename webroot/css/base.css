@@ -1,0 +1,117 @@
+/*
+
+    xs (for phones)
+    sm (for tablets)
+    md (for desktops)
+    lg (for larger desktops)
+
+*/
+
+body {
+    background-color: #001500;
+    color: white;
+}
+
+.container {
+    background-color: #003300;
+    margin-top: 10px;
+}
+
+.navbar-inverse .navbar-nav li a {
+    color: white;
+    font-family: Tw Cen MT Condensed, Arial Narrow, Arial;
+    font-size: 25px;
+    font-weight: bold;
+    font-variant-caps: all-small-caps;
+}
+
+.navbar-inverse {
+    background-color: #001500;
+    border-color: white;
+}
+
+.menu-icon {
+    height: 35px;
+    width: auto;
+}
+
+.dropdown-menu {
+    background-color: #001500;
+    opacity: 0.97;
+}
+
+.dropdown-menu li a:hover {
+    background-color: #003300;
+}
+
+.footer {
+    border-top: white 3px solid;
+    padding: 8px 0px;
+}
+
+.content {
+    padding-bottom: 8px;
+    padding-left: 2%;
+    padding-right: 2%;
+}
+
+.match_date_time{
+    background-color: #001500;
+}
+
+.match_round{
+    background-color: #001500;
+}
+
+.match_short_info_main{
+    font-weight: bold;
+}
+
+.match_short_info{
+    font-size: 16.8px;
+}
+
+.header {
+    background-color: #001500;
+}
+
+.surname {
+    text-transform: uppercase;
+}
+
+.team_logo_match_view {
+    height: 60px;
+    width: auto;
+}
+
+.team_name_match_view {
+    font-size: 15px;
+    text-transform: uppercase;
+}
+
+.score_match_view {
+    font-size: 25px;
+}
+
+.sidebar_event_header_match_view {
+    text-align: center; 
+    font-weight: bold;
+}
+
+.my_form input{
+    color: black;
+}
+
+.input_error {
+    color: red;
+    font-weight: bold;
+}
+
+.admin_toolbar {
+    background-color: #001500;
+    border: white 1px solid;
+}
+
+.timelist_item {
+    color: black;
+}
