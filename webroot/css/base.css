@@ -100,6 +100,7 @@ body {
 
 .my_form input{
     color: black;
+    background-color: white;
 }
 
 .input_error {
@@ -114,4 +115,9 @@ body {
 
 .timelist_item {
     color: black;
+}
+
+.delete_icon_small {
+    height: 15px;
+    width: auto;
 }

@@ -15,12 +15,22 @@
         ČK
     </div>
 </div> 
+
 <?php
     foreach($players as $player){
         if($player['club_id'] == $clubId){
             ?>
         <div class="row">
             <div class="col-md-8" >
+                <?php
+                    if($this->Nicnajder->isAdminLogged()){
+                        echo $this->Html->link($this->Html->image(
+                            "delete.icon.png", ["class" => "delete_icon_small"]),
+                            "http://www.pino.webekacko.com",
+                            ['escapeTitle' => false, 'onclick' => 'deletePlayerFromMatch('.$player['player_id'].'); return false;']
+                        );
+                    }
+                ?>
                 <span class="surname"><?= $player["surname"] ?></span> <?= $player['name'] ?>
             </div>
             <div class="col-md-1">

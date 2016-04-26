@@ -8,6 +8,11 @@ use Cake\Validation\Validator;
 class MatchesController extends AppController {
     
     public function viewSeason($season_id){
+        if(!$this->isNaturalNumber($season_id)){
+            $this->redirect('/');
+            return;
+        }
+        
         $conn = ConnectionManager::get('default');
         
         $matchesInActualSeason = $conn->execute('
@@ -76,6 +81,11 @@ class MatchesController extends AppController {
     }
     
     public function view($match_id){
+        if(!$this->isNaturalNumber($match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
         $conn = ConnectionManager::get('default');
         
         $matchInfo = $conn->execute('
@@ -97,10 +107,12 @@ class MatchesController extends AppController {
         $matchRefrees = $matchRefrees->fetchAll('assoc');
         
         $matchPlayers = $conn->execute('
-            SELECT mp.player_id, mp.club_id, p.name, p.surname
+            SELECT mp.player_id, mp.club_id, p.name, p.surname, c.name club_name
             FROM matches_players mp
             JOIN players p ON mp.player_id = p.id
+            JOIN clubs c ON mp.club_id = c.id
             WHERE match_id = :match_id
+            ORDER BY mp.club_id
         ',["match_id" => $match_id]);
         $matchPlayers = $this->associateByColumn($matchPlayers->fetchAll('assoc'), "player_id");
                 
@@ -167,6 +179,31 @@ class MatchesController extends AppController {
         $this->set('events',$events);
         $this->set('players',$matchPlayers);
         $this->set('referees',$matchRefrees);
+        
+        if($this->isAdminLogged()){
+            $possibleMatchEvents = $conn->execute("
+                SELECT *
+                FROM match_events
+            ")->fetchAll('assoc');
+            $this->set('possibleMatchEvents',$possibleMatchEvents);
+            
+            $possibleMatchPhases = $conn->execute("
+                SELECT *
+                FROM match_phases
+            ")->fetchAll('assoc');
+            $this->set('possibleMatchPhases',$possibleMatchPhases);
+            
+            $matchEventsForAdminsEventList = $conn->execute('
+                SELECT mem.*, mp.club_id, p.name player_name, p.surname player_surname, me.name event_name
+                FROM match_events_matches mem
+                JOIN matches_players mp ON (mp.player_id = mem.player_id AND mp.match_id = :match_id)
+                JOIN players p ON (p.id = mem.player_id)
+                JOIN match_events me ON (me.id = mem. event_id)
+                WHERE mem.match_id = :match_id
+                ORDER BY minute ASC, id ASC
+            ',["match_id" => $match_id])->fetchAll('assoc');
+            $this->set('matchEventsForAdminsEventList',$matchEventsForAdminsEventList);
+        }
     }
     
     private function getMatchValidator(array $teamsInSeasonsIds, array $matchPhasesIds, array $seasonPhasesIds){
@@ -229,8 +266,36 @@ class MatchesController extends AppController {
         return $ids;
     }
     
+    private function insertAllPlayersInMatch(array $playersInMatch, $matchId, $conn){
+        foreach($playersInMatch as $player){
+            $insertError = $conn->insert('matches_players', [
+                'match_id' => $matchId,
+                'player_id' => $player['id'],
+                'club_id' => $player['club_id']
+            ], [
+                'match_id' => 'integer',
+                'player_id' => 'integer',
+                'club_id' => 'integer'
+            ])->errorCode();
+            
+            if($insertError != 0){
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
     public function hunAddToSeason($season_id){
-        $this->checkAdminRights();
+        if(!$this->isAdminLogged()){
+            $this->redirect('/');
+            return;
+        }
+        
+        if(!$this->isNaturalNumber($season_id)){
+            $this->redirect('/');
+            return;
+        }
         
         $conn = ConnectionManager::get('default');
         
@@ -272,29 +337,54 @@ class MatchesController extends AppController {
                     $this->request->data['match_phase_id'] = null;
                 }
                 
-                $insertError = $conn->insert('matches', [
-                    'season_id' => $season_id,
-                    'home_id' => $this->request->data['home_id'],
-                    'away_id' => $this->request->data['away_id'],
-                    'round' => $this->request->data['round'],
-                    'date_time' => $this->request->data['date_time'],
-                    'playtime' => $this->request->data['playtime'],
-                    'match_phase_id' => $this->request->data['match_phase_id'],
-                    'completed' => isset($this->request->data['completed']),
-                    'season_phase_id' => $this->request->data['season_phase_id']
-                ], [
-                    'season_id' => 'integer',
-                    'home_id' => 'integer',
-                    'away_id' => 'integer',
-                    'date_time' => 'datetime',
-                    'match_phase_id' => 'integer',
-                    'completed' => 'boolean',
-                    'season_phase_id' => 'integer'
-                ])->errorCode();
-                
+                $insertOK = $conn->transactional(function ($conn) use ($season_id) {
+                    $insertMatchStmtMedziksicht = $conn->insert('matches', [
+                        'season_id' => $season_id,
+                        'home_id' => $this->request->data['home_id'],
+                        'away_id' => $this->request->data['away_id'],
+                        'round' => $this->request->data['round'],
+                        'date_time' => $this->request->data['date_time'],
+                        'playtime' => $this->request->data['playtime'],
+                        'match_phase_id' => $this->request->data['match_phase_id'],
+                        'completed' => isset($this->request->data['completed']),
+                        'season_phase_id' => $this->request->data['season_phase_id']
+                    ], [
+                        'season_id' => 'integer',
+                        'home_id' => 'integer',
+                        'away_id' => 'integer',
+                        'date_time' => 'datetime',
+                        'match_phase_id' => 'integer',
+                        'completed' => 'boolean',
+                        'season_phase_id' => 'integer'
+                    ]);
+                    
+                    if($insertMatchStmtMedziksicht->errorCode() != 0){
+                        return false;
+                    }
+                    $insertedMatchId = $insertMatchStmtMedziksicht->lastInsertId();
+                    
+                    $playersInMatchStmtMedziksicht = $conn->execute("
+                        SELECT id, club_id
+                        FROM players
+                        WHERE club_id = :home_id OR club_id = :away_id
+                    ",["home_id" => $this->request->data['home_id'], "away_id" => $this->request->data['away_id']],
+                      ["home_id" => "integer", "away_id" => "integer"]);
+                    
+                    if($playersInMatchStmtMedziksicht->errorCode() != 0){
+                        return false;
+                    }
+                    $playersInMatch = $playersInMatchStmtMedziksicht->fetchAll('assoc');
+
+                    if(!$this->insertAllPlayersInMatch($playersInMatch, $insertedMatchId, $conn)){
+                        return false;
+                    }
+                    
+                    return true;
+                });
+
                 $this->request->data = [];
                 
-                if($insertError == 0){
+                if($insertOK){
                     $this->set('insertedMsg', 'Zápas úspešne pridaný.');
                 }
                 else {
@@ -303,6 +393,265 @@ class MatchesController extends AppController {
             }
         }
     }
+    
+    public function hunDelete($match_id){
+        if(!$this->isAdminLogged()){
+            $this->redirect('/');
+            return;
+        }
+        
+        if(!$this->isNaturalNumber($match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        
+        $conn->execute("
+            DELETE FROM matches
+            WHERE id = :match_id
+        ", ["match_id" => $match_id], ["match_id" => 'integer']);
+        
+        $this->redirect(["controller" => "Matches", "action" => "view_season", $this->getActualSeasonId()]);
+    }
+    
+    private function getMatchEventValidator(array $possibleEventsIds, array $playersInMatchIds){
+        $validator = new Validator();
+        
+        $validator
+            ->requirePresence('event_id')
+            ->requirePresence('player_id')
+            ->requirePresence('minute', true)
+            ->notEmpty('minute', 'Musíš zadať minútu')
+            ->add('event_id', 'event_id', [
+                'rule' => ['inList', $possibleEventsIds],
+                'message' => 'Vybraná udalosť neexistuje'
+            ])
+            ->add('player_id', 'player_in_match', [
+                'rule' => ['inList', $playersInMatchIds],
+                'message' => 'Vybraný hráč nieje na súpiske v tomto zápase'
+            ])
+            ->add('minute', 'minute', [
+                'rule' => ['naturalNumber', true],
+                'message' => 'Minúta musí byť prirodzené číslo (a bez bodky na konci)'
+            ])
+            ;
+        
+        return $validator;
+    }
+    
+    public function hunAddEventToMatch($match_id){
+        if(!$this->isAdminLogged()){
+            $this->redirect('/');
+            return;
+        }
+        
+        if(!$this->isNaturalNumber($match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        $this->request->session()->write('addEventToMatch.validationErrors',[]);
+        
+        if($this->request->is('post')){
+            
+            $possibleEventsIds = $this->getIdsArray(
+                $conn->execute("
+                    SELECT id
+                    FROM match_events
+                ")->fetchAll('assoc')
+            );
+            
+            $playersInMatchIds = $this->getIdsArray(
+                $conn->execute('
+                    SELECT mp.player_id id
+                    FROM matches_players mp
+                    WHERE match_id = :match_id
+                ',["match_id" => $match_id])->fetchAll('assoc')
+            );
+            
+            $matchEventValidator = $this->getMatchEventValidator($possibleEventsIds, $playersInMatchIds);
+            
+            $validationErrors = $matchEventValidator->errors($this->request->data);
+            $this->request->session()->write('addEventToMatch.validationErrors', $validationErrors);
+            
+            if(empty($validationErrors)){
+                
+                $insertError = $conn->insert('match_events_matches', [
+                    'match_id' => $match_id,
+                    'event_id' => $this->request->data['event_id'],
+                    'player_id' => $this->request->data['player_id'],
+                    'minute' => $this->request->data['minute'],
+                ], [
+                    'match_id' => 'integer',
+                    'event_id' => 'integer',
+                    'player_id' => 'integer',
+                    'minute' => 'integer',
+                ])->errorCode();
+                
+                $this->request->data = [];
+                
+                if($insertError != 0){
+                    $this->request->session()->write('addEventToMatch.insertedMsg', 'Chyba pri pridávaní zápasu. Skús to znova.');
+                }
+            }
+            
+            $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+        }
+    }
+    
+    private function getMatchPhaseValidator(array $possiblePhaseIds){
+        $validator = new Validator();
+        
+        $validator
+            ->requirePresence('match_phase_id')
+            ->add('match_phase_id', 'match_phase_id', [
+                'rule' => ['inList', $possiblePhaseIds],
+                'message' => 'Vybraná fáza zápasu neexistuje'
+            ]);
+        
+        return $validator;
+    }
+    
+    public function hunChangeMatchPhase($match_id){
+        if(!$this->isAdminLogged()){
+            $this->redirect('/');
+            return;
+        }
+        
+        if(!$this->isNaturalNumber($match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        $this->request->session()->write('changeMatchPhase.validationErrors',[]);
+        
+        if($this->request->is('post')){
+            
+            $possibleMatchPhaseIds = $this->getIdsArray(
+                $conn->execute("
+                    SELECT id
+                    FROM match_phases
+                ")->fetchAll('assoc'),
+                ['0']
+            );
+            
+            $changeMatchPhaseValidator = $this->getMatchPhaseValidator($possibleMatchPhaseIds);
+            
+            $validationErrors = $changeMatchPhaseValidator->errors($this->request->data);
+            $this->request->session()->write('changeMatchPhase.validationErrors', $validationErrors);
+            
+            if(empty($validationErrors)){
+                if($this->request->data['match_phase_id'] == 0){
+                    $this->request->data['match_phase_id'] = null;
+                }
+                
+                $updateError = $conn->execute("
+                    UPDATE matches
+                    SET match_phase_id = :match_phase_id, completed = 0
+                    WHERE id = :match_id
+                ", ["match_phase_id" => $this->request->data['match_phase_id'], "match_id" => $match_id],
+                   ["match_phase_id" => "integer", "match_id" => "integer"])->errorCode();
+                
+                $this->request->data = [];
+                
+                if($updateError != 0){
+                    $this->request->session()->write('changeMatchPhase.insertedMsg', 'Chyba pri zmene fázy zápasu. Skús to znova.');
+                }
+            }
+            
+            $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+        }
+    }
+    
+     public function hunCompleteMatch($match_id){
+        if(!$this->isAdminLogged()){
+            $this->redirect('/');
+            return;
+        }
+        
+        if(!$this->isNaturalNumber($match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        
+        $updateError = $conn->execute("
+            UPDATE matches
+            SET match_phase_id = NULL, completed = 1
+            WHERE id = :match_id
+        ", ["match_id" => $match_id],
+           ["match_id" => "integer"])->errorCode();
+
+        if($updateError != 0){
+            $this->request->session()->write('changeMatchPhase.insertedMsg', 'Chyba pri zmene fázy zápasu. Skús to znova.');
+        }
+        
+        $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+     }
+     
+     public function hunDeletePlayerFromMatch($match_id, $player_id){
+         if(!$this->isAdminLogged() || !$this->isNaturalNumber($match_id) || !$this->isNaturalNumber($player_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        
+        $deleteOK = $conn->transactional(function ($conn) use ($match_id, $player_id) {
+            $deleteErrorCode = $conn->execute("
+                DELETE FROM matches_players
+                WHERE match_id = :match_id AND player_id = :player_id
+            ", ["match_id" => $match_id, "player_id" => $player_id],
+               ["match_id" => "integer", "player_id" => "integer"])->errorCode();
+            
+            if($deleteErrorCode != 0){
+                return false;
+            }
+            
+            $deleteErrorCode = $conn->execute("
+                DELETE FROM match_events_matches
+                WHERE match_id = :match_id AND player_id = :player_id
+            ", ["match_id" => $match_id, "player_id" => $player_id],
+               ["match_id" => "integer", "player_id" => "integer"])->errorCode();
+            
+            if($deleteErrorCode != 0){
+                return false;
+            }
+
+            return true;
+        });
+        
+        if(!$deleteOK){
+            $this->request->session()->write('deletePlayerFromMatch.deleteError','Hráča sa nepodarilo zmazať. Skús to znovu.');
+        }
+        
+        $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+     }
+     
+     public function hunDeleteEventInMatch($match_id, $event_in_match_id){
+         if(!$this->isAdminLogged() || !$this->isNaturalNumber($event_in_match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        
+        $deleteErrorCode = $conn->execute("
+            DELETE FROM match_events_matches
+            WHERE id = :event_in_match_id
+        ", ["event_in_match_id" => $event_in_match_id],
+           ["event_in_match_id" => "integer"])->errorCode();
+        
+        if($deleteErrorCode != 0){
+            $this->request->session()->write('deleteEventInMatch.deleteError','Udalosť sa nepodarilo zmazať. Skús to znovu.');
+        }
+        
+        $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+     }
     
 }
 

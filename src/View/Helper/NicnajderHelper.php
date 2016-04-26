@@ -16,5 +16,9 @@ class NicnajderHelper extends Helper {
         
         return $errorStr;
     }
+    
+    public function isAdminLogged(){
+        return $this->request->session()->read('admin.login');
+    }
 }
 ?>

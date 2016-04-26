@@ -1,5 +1,5 @@
 <?php
-    if($this->request->session()->read('admin.login')){
+    if($this->Nicnajder->isAdminLogged()){
 ?>
     <div class="row">
         <a href="<?= $this->Url->build(['controller' => 'Matches', 'action' => 'hun_add_to_season', $season_id]) ?>" class="btn btn-success" role="button">
@@ -45,6 +45,16 @@
                 else if($match["match_phase_id"]){
                     echo $this->Html->link("Zobraz live prenos", 
                         ["controller" => "Matches", "action" => "view", $match["id"]]);
+                }
+                else if($this->Nicnajder->isAdminLogged()){
+                    echo $this->Html->link("Zobraz zápas", 
+                        ["controller" => "Matches", "action" => "view", $match["id"]]);
+                }
+                
+                
+                if($this->Nicnajder->isAdminLogged()){
+                    echo " ".$this->Html->link("Zmaž zápas", 
+                        ["controller" => "Matches", "action" => "hun_delete", $match["id"]], ["style" => 'color: red;']);
                 }
             ?>
         </div>

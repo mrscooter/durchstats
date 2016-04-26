@@ -3,13 +3,13 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/var/www/durchstats/src/Template/Matches/hun_add_to_season.ctp</file>
+            <file>file:/var/www/durchstats/src/Template/Element/add_event_to_match_form.ctp</file>
+            <file>file:/var/www/durchstats/src/View/Helper/NicnajderHelper.php</file>
             <file>file:/var/www/durchstats/webroot/css/base.css</file>
-            <file>file:/var/www/durchstats/src/Controller/AppController.php</file>
-            <file>file:/var/www/durchstats/src/Controller/AdminsController.php</file>
-            <file>file:/var/www/durchstats/src/Template/Element/menu.ctp</file>
+            <file>file:/var/www/durchstats/src/Template/Element/view_match_players_stats.ctp</file>
             <file>file:/var/www/durchstats/src/Controller/MatchesController.php</file>
             <file>file:/var/www/durchstats/src/Template/Layout/default.ctp</file>
+            <file>file:/var/www/durchstats/src/Template/Matches/view.ctp</file>
         </group>
     </open-files>
 </project-private>

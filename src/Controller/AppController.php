@@ -17,6 +17,7 @@ namespace App\Controller;
 use Cake\Controller\Controller;
 use Cake\Event\Event;
 use Cake\Datasource\ConnectionManager;
+use Cake\Validation\Validation;
 
 /**
  * Application Controller
@@ -56,13 +57,7 @@ class AppController extends Controller
     {
         $conn = ConnectionManager::get('default');
         
-        $actualSeasonId = $conn->query('
-            SELECT MAX(id) as actual_season_id 
-            FROM seasons
-        ');
-        
-        $actualSeasonId = $actualSeasonId->fetch("assoc");
-        $actualSeasonId = (int) $actualSeasonId['actual_season_id'];
+        $actualSeasonId = $this->getActualSeasonId();
         
         $activeClubsInActualSeason = $conn->execute('
             SELECT c.id, c.name
@@ -81,6 +76,17 @@ class AppController extends Controller
         }
     }
     
+    protected function getActualSeasonId(){
+        $conn = ConnectionManager::get('default');
+        
+        $actualSeasonId = $conn->query('
+            SELECT MAX(id) as actual_season_id 
+            FROM seasons
+        ')->fetch("assoc");
+        
+        return (int) $actualSeasonId['actual_season_id'];
+    }
+    
     protected function associateByColumn(array $array, $column){
         $newArray = array();
         foreach ($array as $element){
@@ -89,10 +95,12 @@ class AppController extends Controller
         return $newArray;
     }
     
-    protected function checkAdminRights(){
-        if(!$this->request->session()->read('admin.login')){
-            $this->redirect('/');
-        }
+    protected function isNaturalNumber($expectedNaturalNumber){
+        return Validation::naturalNumber($expectedNaturalNumber,true);
+    }
+    
+    protected function isAdminLogged(){
+        return $this->request->session()->read('admin.login');
     }
     
     public function validateSlovakDateTime($dateTimeStr, $context){

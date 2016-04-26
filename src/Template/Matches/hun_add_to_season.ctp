@@ -115,7 +115,7 @@
         <label class="control-label col-md-1" for="match_phase_id">Fáza zápasu:</label>
         <div class="col-md-4">
             <select class="form-control" id="match_phase_id" name="match_phase_id">
-                <option value="0">Zápas sa momentálne nehrá</option>
+                <option value="0">Zápas sa ešte nezačal</option>
                 <?php
                     foreach($matchPhases as $phase){
                         $selected = '';
