@@ -100,7 +100,7 @@ class MatchesController extends AppController {
         $matchInfo["date_time"] = new \DateTime($matchInfo["date_time"]);
         
         $matchRefrees = $conn->execute('
-            SELECT name, surname
+            SELECT id, name, surname
             FROM referees_matches
             WHERE match_id = :match_id
         ',["match_id" => $match_id]);
@@ -233,7 +233,7 @@ class MatchesController extends AppController {
                 ]
             ])
             ->add('round', 'alphaNumericDot', [
-                'rule' => ['custom', '/^[0-9\p{L}\. ]+$/'],
+                'rule' => ['custom', '/^[0-9\p{L}\. ]+$/u'],
                 'message' => 'Údaj o kole musí byť neprázdny a môže obsahovať iba číslice, písmená, medzere a bodky'
             ])
             ->add('date_time', 'date_time', [
@@ -241,7 +241,7 @@ class MatchesController extends AppController {
                 'message' => 'Nesprávny čas a dátum. Musí byť dodržaný formát &quot;DD.MM.RRRR HH:MM&quot; (napr. 07.05.2015)'
             ])
             ->add('playtime', 'alphaNumericDot', [
-                'rule' => ['custom', '/^[0-9\p{L}\. ]+$/'],
+                'rule' => ['custom', '/^[0-9\p{L}\. ]+$/u'],
                 'message' => 'Údaj o hracom čase musí byť neprázdny a môže obsahovať iba číslice, písmená, medzere a bodky'
             ])
             ->add('match_phase_id', 'match_phase_id', [
@@ -255,17 +255,7 @@ class MatchesController extends AppController {
         
         return $validator;
     }
-    
-    private function getIdsArray(array $rowsFromDB, array $explicitIds = []){
-        $ids = $explicitIds;
-        
-        foreach ($rowsFromDB as $row){
-            $ids[] = $row['id'];
-        }
-        
-        return $ids;
-    }
-    
+      
     private function insertAllPlayersInMatch(array $playersInMatch, $matchId, $conn){
         foreach($playersInMatch as $player){
             $insertError = $conn->insert('matches_players', [
@@ -385,16 +375,18 @@ class MatchesController extends AppController {
                 $this->request->data = [];
                 
                 if($insertOK){
-                    $this->set('insertedMsg', 'Zápas úspešne pridaný.');
+                    $this->set('actionMsg', 'Zápas úspešne pridaný.');
                 }
                 else {
-                    $this->set('insertedMsg', 'Chyba pri pridávaní zápasu. Skús to znova.');
+                    $this->set('actionMsg', 'Chyba pri pridávaní zápasu. Skús to znova.');
                 }
             }
         }
+        
+        $this->render("match_info_form");
     }
     
-    public function hunDelete($match_id){
+    public function hunDelete($match_id, $season_id){
         if(!$this->isAdminLogged()){
             $this->redirect('/');
             return;
@@ -412,7 +404,7 @@ class MatchesController extends AppController {
             WHERE id = :match_id
         ", ["match_id" => $match_id], ["match_id" => 'integer']);
         
-        $this->redirect(["controller" => "Matches", "action" => "view_season", $this->getActualSeasonId()]);
+        $this->redirect(["controller" => "Matches", "action" => "view_season", $season_id]);
     }
     
     private function getMatchEventValidator(array $possibleEventsIds, array $playersInMatchIds){
@@ -633,7 +625,7 @@ class MatchesController extends AppController {
      }
      
      public function hunDeleteEventInMatch($match_id, $event_in_match_id){
-         if(!$this->isAdminLogged() || !$this->isNaturalNumber($event_in_match_id)){
+        if(!$this->isAdminLogged() || !$this->isNaturalNumber($event_in_match_id)){
             $this->redirect('/');
             return;
         }
@@ -651,6 +643,176 @@ class MatchesController extends AppController {
         }
         
         $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+     }
+     
+    private function getRefereeValidator(){
+        $validator = new Validator();
+        
+        $validator
+            ->requirePresence('name')
+            ->requirePresence('surname')
+            ->notEmpty('name', 'Musíš zadať meno')
+            ->notEmpty('surname', 'Musíš zadať priezvisko')
+            ->add('name', 'name', [
+                'rule' => ['alphaNumeric'],
+                'message' => 'Meno môže obsahovať iba písmená'
+            ])
+            ->add('surname', 'surname', [
+                'rule' => ['alphaNumeric'],
+                'message' => 'Priezvisko môže obsahovať iba písmená'
+            ])
+            ;
+        
+        return $validator;
+    }
+     
+    public function hunAddRefereeToMatch($match_id){
+         if(!$this->isAdminLogged() || !$this->isNaturalNumber($match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        $this->request->session()->write('addRefereeToMatch.validationErrors',[]);
+        
+        if($this->request->is('post')){
+            
+            $refereeValidator = $this->getRefereeValidator();
+            
+            $validationErrors = $refereeValidator->errors($this->request->data);
+            $this->request->session()->write('addRefereeToMatch.validationErrors', $validationErrors);
+            
+            if(empty($validationErrors)){
+                
+                $insertError = $conn->insert('referees_matches', [
+                    'match_id' => $match_id,
+                    'name' => $this->request->data['name'],
+                    'surname' => $this->request->data['surname'],
+                ])->errorCode();
+                
+                $this->request->data = [];
+                
+                if($insertError != 0){
+                    $this->request->session()->write('addRefereeToMatch.insertedMsg', 'Chyba pri pridávaní rozhodcu. Skús to znova.');
+                }
+            }
+            
+            $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+        }
+    }
+     
+    public function hunDeleteRefereeFromMatch($match_id, $referee_id){
+        if(!$this->isAdminLogged() || !$this->isNaturalNumber($match_id) || !$this->isNaturalNumber($referee_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        
+        $deleteErrorCode = $conn->execute("
+            DELETE FROM referees_matches
+            WHERE id = :referee_id
+        ", ["referee_id" => $referee_id],
+           ["referee_id" => "integer"])->errorCode();
+        
+        if($deleteErrorCode != 0){
+            $this->request->session()->write('deleteReferee.deleteError','Rozhodcu sa nepodarilo zmazať. Skús to znovu.');
+        }
+        
+        $this->redirect(["controller" => "Matches", "action" => "view", $match_id]);
+    }
+     
+     public function hunEdit($match_id){
+        if(!$this->isAdminLogged() || !$this->isNaturalNumber($match_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+        
+        $matchOriginalInfo = $conn->execute('
+            SELECT *
+            FROM matches
+            WHERE id = :match_id
+        ',["match_id" => $match_id], ["match_id" => "integer"])->fetch('assoc');
+        
+        $season_id = $matchOriginalInfo["season_id"];
+        
+        $clubsInSeason = $conn->execute('
+            SELECT clubs.*
+            FROM clubs
+            JOIN clubs_seasons ON clubs.id = clubs_seasons.club_id
+            WHERE clubs_seasons.season_id = :season_id
+        ', 
+        ["season_id" => $season_id], 
+        ["season_id" => "integer"])->fetchAll('assoc');
+        $this->set('clubsInSeason', $clubsInSeason);
+        
+        $matchPhases = $conn->execute('
+            SELECT *
+            FROM match_phases
+        ')->fetchAll('assoc');
+        $this->set('matchPhases', $matchPhases);
+        
+        $seasonPhases = $conn->execute('
+            SELECT *
+            FROM season_phases
+        ')->fetchAll('assoc');
+        $this->set('seasonPhases', $seasonPhases);
+        
+        $this->set('validationErrors',[]);
+        if(!$this->request->is('post')){
+            $matchOriginalInfo['date_time'] = (new \DateTime($matchOriginalInfo['date_time']))->format("d.m.Y H:i");
+            $this->request->data = $matchOriginalInfo;
+        }
+        else {
+            $matchValidator = $this->getMatchValidator(
+                    $this->getIdsArray($clubsInSeason), 
+                    $this->getIdsArray($matchPhases, ['0']),
+                    $this->getIdsArray($seasonPhases));
+            
+            $validationErrors = $matchValidator->errors($this->request->data);
+            $this->set('validationErrors',$validationErrors);
+            
+            if(empty($validationErrors)){
+                $this->request->data['date_time'] = new \DateTime($this->request->data['date_time']);
+                if($this->request->data['match_phase_id'] == 0){
+                    $this->request->data['match_phase_id'] = null;
+                }
+                
+                $updateMatchStmtMedziksicht = $conn->update('matches', [
+                    'home_id' => $this->request->data['home_id'],
+                    'away_id' => $this->request->data['away_id'],
+                    'round' => $this->request->data['round'],
+                    'date_time' => $this->request->data['date_time'],
+                    'playtime' => $this->request->data['playtime'],
+                    'match_phase_id' => $this->request->data['match_phase_id'],
+                    'completed' => isset($this->request->data['completed']),
+                    'season_phase_id' => $this->request->data['season_phase_id']
+                ], 
+                [
+                    'id' => $match_id
+                ],        
+                [
+                    'home_id' => 'integer',
+                    'away_id' => 'integer',
+                    'date_time' => 'datetime',
+                    'match_phase_id' => 'integer',
+                    'completed' => 'boolean',
+                    'season_phase_id' => 'integer'
+                ]);
+                
+                if($updateMatchStmtMedziksicht->errorCode() != 0){
+                    $this->set('actionMsg', 'Chyba pri upravovaní zápasu. Skús to znova.');
+                }
+                else {
+                    $this->set('actionMsg', 'Zápas úspešne upravený.');
+                    $this->request->data['date_time'] = $this->request->data['date_time']->format("d.m.Y H:i");
+                }
+            }
+        }
+        
+        $this->render("match_info_form");
      }
     
 }

@@ -12,6 +12,8 @@
         echo "<br />";
         echo $this->element('change_match_phase_form');
         echo "<br />";
+        echo $this->element('add_referee_to_match_form');
+        echo "<br />";
         echo $this->element('match_events_admin_list');
         echo "<br />";
     }
@@ -42,12 +44,32 @@
     <div class="col-md-3">
         <?php
             foreach ($referees as $ref){
-                echo '<div><span class="surname">'.$ref["surname"]."</span> ".$ref['name'].'</div>';
+                echo "<div>";
+                echo $this->Html->link($this->Html->image(
+                        "delete.icon.png", ["class" => "delete_icon_small"]),
+                        "http://www.pino.webekacko.com",
+                        ['escapeTitle' => false, 'onclick' => 'deleteReferee('.$ref['id'].'); return false;']
+                    );
+                echo ' <span class="surname">'.$ref["surname"]."</span> ".$ref['name'];
+                echo "</div>";
             }
         ?>
     </div>
     <div class="col-md-3">
         <?= $matchInfo['playtime'] ?>
+    </div>
+</div>
+        
+<div class="row input_error">
+    <div class="col-md-12" id="delete_referee_in_match_ajax_error"></div>
+    <div class="col-md-12">
+        <?php
+            if($this->request->session()->check("deleteReferee.deleteError")){
+                echo $this->request->session()->consume("deleteReferee.deleteError");
+            }
+            
+            $this->request->session()->delete("deleteReferee");
+        ?>
     </div>
 </div>
 <br />
@@ -140,6 +162,18 @@
 <div id="error"></div>
 
 <script type="text/javascript">
+    function deleteReferee(referee_id){
+        $.ajax({
+            url: "<?= $this->Url->build(["controller" => "Matches", "action" => "hun_delete_referee_from_match", $matchInfo['id'] ]); ?>" + "/" + referee_id,
+            method : "POST",
+            error: function(jqXHR, status, error){
+                $('#delete_referee_in_match_ajax_error').html("chyba pri AJAXovom volaní pri mazaní rozhodcu. Skús to znova a ak problém pretrváva ozvy sa Šimonovi.");
+            },
+            success: function(result){
+                $("#content_container").html(result);
+            }
+        });
+    }
     function deletePlayerFromMatch(player_id){
         $.ajax({
             url: "<?= $this->Url->build(['controller' => 'Matches', 'action' => 'hun_delete_player_from_match', $matchInfo['id']]); ?>" + "/" + player_id,

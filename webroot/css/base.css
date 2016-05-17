@@ -22,7 +22,7 @@ body {
     font-family: Tw Cen MT Condensed, Arial Narrow, Arial;
     font-size: 25px;
     font-weight: bold;
-    font-variant-caps: all-small-caps;
+    font-variant: small-caps
 }
 
 .navbar-inverse {
@@ -120,4 +120,28 @@ body {
 .delete_icon_small {
     height: 15px;
     width: auto;
+}
+
+.listed_clickable_item {
+    color: white;
+}
+
+.listed_clickable_item:hover {
+    color: white;
+    text-decoration: underline;
+    
+}
+.club_logo_list {
+    height: 60px;
+    width: auto;
+    margin-bottom: 5px;
+}
+
+.page_heading_text{
+    font-size: 150%;
+    font-weight: bold;
+}
+
+.small_heading{
+    font-weight: bold;
 }

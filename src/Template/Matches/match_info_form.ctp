@@ -7,8 +7,8 @@
 <div class="row">
     <div class="col-md-12 form_info_msg">
         <?php
-            if(isset($insertedMsg)){
-                echo $insertedMsg;
+            if(isset($actionMsg)){
+                echo $actionMsg;
             }
         ?>
     </div>
@@ -115,7 +115,7 @@
         <label class="control-label col-md-1" for="match_phase_id">Fáza zápasu:</label>
         <div class="col-md-4">
             <select class="form-control" id="match_phase_id" name="match_phase_id">
-                <option value="0">Zápas sa ešte nezačal</option>
+                <option value="0">- - - - - </option>
                 <?php
                     foreach($matchPhases as $phase){
                         $selected = '';
@@ -166,7 +166,17 @@
     
     <div class="form-group">
         <div class="col-md-offset-1 col-md-10">
-            <button type="submit" class="btn btn-default">Vytvor zápas</button>
+            <button type="submit" class="btn btn-default">
+                <?php
+                    if($this->request->params['action'] == 'hunEdit'){
+                        echo "Uprav zápas";
+                    }
+                    else if($this->request->params['action'] == 'hunAddToSeason'){
+                        echo "Vytvor zápas";
+                    }
+                ?>
+                
+            </button>
         </div>
     </div>
 </form>

@@ -53,8 +53,7 @@ class AppController extends Controller
      * @param \Cake\Event\Event $event The beforeRender event.
      * @return void
      */
-    public function beforeRender(Event $event)
-    {
+    public function beforeRender(Event $event){
         $conn = ConnectionManager::get('default');
         
         $actualSeasonId = $this->getActualSeasonId();
@@ -74,14 +73,22 @@ class AppController extends Controller
         ) {
             $this->set('_serialize', true);
         }
+        
+        $allSeasons = $conn->execute('
+            SELECT *
+            FROM seasons
+            ORDER BY year DESC
+        ')->fetchAll('assoc');
+        $this->set('allSeasons', $allSeasons);
     }
     
     protected function getActualSeasonId(){
         $conn = ConnectionManager::get('default');
         
         $actualSeasonId = $conn->query('
-            SELECT MAX(id) as actual_season_id 
+            SELECT id as actual_season_id
             FROM seasons
+            WHERE actual = 1
         ')->fetch("assoc");
         
         return (int) $actualSeasonId['actual_season_id'];
@@ -124,5 +131,15 @@ class AppController extends Controller
         }
         
         return true;
+    }
+    
+    protected function getIdsArray(array $rowsFromDB, array $explicitIds = []){
+        $ids = $explicitIds;
+        
+        foreach ($rowsFromDB as $row){
+            $ids[] = $row['id'];
+        }
+        
+        return $ids;
     }
 }

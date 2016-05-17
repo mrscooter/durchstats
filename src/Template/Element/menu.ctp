@@ -10,7 +10,7 @@
     <div class="collapse navbar-collapse" id="mainMenu">
         <ul class="nav navbar-nav">
           <li>
-            <?= $this->Html->link($this->Html->image("guatemala_football2.icon.png", ["class" => "menu-icon"])."Aktuálna sezóna",
+            <?= $this->Html->link($this->Html->image("guatemala_football2.icon.png", ["class" => "menu-icon"])."aktuálna sezóna",
                     ['controller' => 'Matches', 'action' => 'viewSeason', $actualSeasonId ],
                     ['escape' => false]) 
             ?>
@@ -18,7 +18,7 @@
           <li class="dropdown">
             <a class="dropdown-toggle" data-toggle="dropdown" href="#">
                 <?= $this->Html->image("moldova_shield.icon.png", ["class" => "menu-icon"]) ?>
-                Aktívne tímy 
+                aktívne tímy 
                 <span class="caret"></span>
             </a>
             <ul class="dropdown-menu">
@@ -37,19 +37,26 @@
           <li class="dropdown">
             <a class="dropdown-toggle" data-toggle="dropdown" href="#">
                 <?= $this->Html->image("sri_lanka_archive.icon.png", ["class" => "menu-icon"]) ?>
-                Archív Sezón
+                archív sezón
                 <span class="caret"></span>
             </a>
             <ul class="dropdown-menu">
-              <li><a href="#">Page 1-1</a></li>
-              <li><a href="#">Page 1-2</a></li>
-              <li><a href="#">Page 1-3</a></li>
+              <?php
+                foreach ($allSeasons as $season){
+                    echo "<li>";
+                    echo $this->Html->link(
+                                        $season['year'],
+                                        ['controller' => 'Matches', 'action' => 'viewSeason', $season['id'] ]
+                                    );
+                    echo "</li>";
+                }
+              ?>
             </ul>
           </li>
           <li class="dropdown">
             <a class="dropdown-toggle" data-toggle="dropdown" href="#">
                 <?= $this->Html->image("footbal_player.icon.png", ["class" => "menu-icon"]) ?>
-                Hráčske štatistiky
+                hráčske štatistiky
                 <span class="caret"></span>
             </a>
             <ul class="dropdown-menu">

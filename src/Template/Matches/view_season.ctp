@@ -51,10 +51,14 @@
                         ["controller" => "Matches", "action" => "view", $match["id"]]);
                 }
                 
+                if($this->Nicnajder->isAdminLogged()){
+                    echo " ".$this->Html->link("Uprav zápas", 
+                        ["controller" => "Matches", "action" => "hun_edit", $match["id"]]);
+                }
                 
                 if($this->Nicnajder->isAdminLogged()){
                     echo " ".$this->Html->link("Zmaž zápas", 
-                        ["controller" => "Matches", "action" => "hun_delete", $match["id"]], ["style" => 'color: red;']);
+                        ["controller" => "Matches", "action" => "hun_delete", $match["id"], $season_id], ["style" => 'color: red;']);
                 }
             ?>
         </div>

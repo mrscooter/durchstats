@@ -26,7 +26,6 @@
             
             <button type="button" onclick="completeMatch();return false;" class="btn btn-default">Ukonči zápas</button>
         </form>
-        </form>
     </div>
 </div>
 
