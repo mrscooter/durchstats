@@ -6,7 +6,7 @@ use Cake\Validation\Validator;
 
 class SeasonsController extends AppController {
     
-    private function getSeasonValidator(){
+    private function getSeasonValidator(array $allSeasonsYears){
         $validator = new Validator();
         
         $validator
@@ -15,6 +15,18 @@ class SeasonsController extends AppController {
             ->add('year', 'year', [
                 'rule' => ['naturalNumber'],
                 'message' => 'Rok musí byť číslo'
+            ])
+            ->add('year', 'Duplicitný rok', [
+                'rule' => function ($value, $context) use ($allSeasonsYears){
+                    foreach($allSeasonsYears as $year){
+                        if($value == $year['year']){
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                },
+                'message' => 'Sezóna v tomto roku už existuje'
             ])
             ;
         
@@ -32,7 +44,11 @@ class SeasonsController extends AppController {
         $validationErrors = [];
         if($this->request->is('post')){
             
-            $seasonValidator = $this->getSeasonValidator();
+            $allSeasonsYears = $conn->execute('
+                SELECT year
+                FROM seasons
+            ')->fetchAll('assoc');
+            $seasonValidator = $this->getSeasonValidator($allSeasonsYears);
             
             $validationErrors = $seasonValidator->errors($this->request->data);
             
@@ -69,6 +85,43 @@ class SeasonsController extends AppController {
             SELECT *
             FROM seasons
         ')->fetchAll('assoc');
+    }
+    
+    public function hunSetActual($season_id){
+        if(!$this->isAdminLogged() || !$this->isNaturalNumber($season_id)){
+            $this->redirect('/');
+            return;
+        }
+        
+        $conn = ConnectionManager::get('default');
+
+        $setActualOK = $conn->transactional(function ($conn) use ($season_id){
+            $setActualZeroStmt = $conn->execute('
+                UPDATE seasons
+                SET actual=0
+            ');
+
+            if($setActualZeroStmt->errorCode() != 0){
+                return false;
+            }
+
+            $setActualStmt = $conn->execute('
+                UPDATE seasons
+                SET actual=1
+                WHERE id=:season_id
+            ',['season_id' => $season_id],['season_id' => 'integer']);
+
+            if($setActualStmt->errorCode() != 0){
+                return false;
+            }
+            
+            return true;
+        });
+        
+        if(!$setActualOK){
+            $this->request->session()->write('hunSetActual.updateMsg','* Pri nastavovaní aktuálnej sezóny vznikla neočakávaná chyba. Skús to znovu.');
+        }
+        $this->redirect(['controller' => 'Seasons', 'action' => 'hunList']);
     }
     
     public function hunEdit($season_id){

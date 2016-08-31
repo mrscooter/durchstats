@@ -56,13 +56,26 @@
           <li class="dropdown">
             <a class="dropdown-toggle" data-toggle="dropdown" href="#">
                 <?= $this->Html->image("footbal_player.icon.png", ["class" => "menu-icon"]) ?>
-                hráčske štatistiky
+                štatistiky
                 <span class="caret"></span>
             </a>
             <ul class="dropdown-menu">
-              <li><a href="#">Page 1-1</a></li>
-              <li><a href="#">Page 1-2</a></li>
-              <li><a href="#">Page 1-3</a></li>
+              <li>
+                <?php
+                    echo $this->Html->link(
+                        'Podla hráčov',
+                        ['controller' => 'Stats', 'action' => 'listPlayers']
+                    );
+                ?>
+              </li>
+              <li>
+                <?php
+                    echo $this->Html->link(
+                        'Podla klubov',
+                        ['controller' => 'Stats', 'action' => 'listClubs']
+                    );
+                ?>
+              </li>
             </ul>
           </li>
         </ul>

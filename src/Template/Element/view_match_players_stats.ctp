@@ -17,10 +17,11 @@
 </div> 
 
 <?php
+    $i=0;
     foreach($players as $player){
         if($player['club_id'] == $clubId){
             ?>
-        <div class="row">
+        <div class="row <?= ($i%2==1) ? "table_alternative_row" : "" ?>">
             <div class="col-md-8" >
                 <?php
                     if($this->Nicnajder->isAdminLogged()){
@@ -63,6 +64,7 @@
             </div>
         </div>
             <?php
+            $i++;
         }
     }
 ?>

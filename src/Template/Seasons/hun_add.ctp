@@ -1,4 +1,8 @@
 <!-- Seasons -->
+
+<?php
+    $requestData = $this->request->data;
+?>
 <div class="row">
     <div class="col-md-12 form_info_msg">
         <?php
@@ -12,7 +16,13 @@
     <div class="form-group">
         <label class="control-label col-md-1" for="year">Rok:</label>
         <div class="col-md-4">
-            <input type="text" class="form-control" id="year" name="year" placeholder="Zadaj rok" />
+            <input type="text" class="form-control" id="year" name="year" placeholder="Zadaj rok" 
+                   value="<?php
+                        if(isset($requestData['year'])){
+                            echo $requestData['year'];
+                        }
+                   ?>"
+            />
         </div>
         <div class="col-md-7 input_error">
             <?= $this->Nicnajder->errorsForCell($validationErrors, 'year') ?>

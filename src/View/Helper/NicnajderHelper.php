@@ -20,5 +20,9 @@ class NicnajderHelper extends Helper {
     public function isAdminLogged(){
         return $this->request->session()->read('admin.login');
     }
+    
+    public function formatAvgStat($statCount, $matchesCount){
+        return number_format($matchesCount == 0 ? 0 : $statCount/$matchesCount, 2, ",", " ");
+    }
 }
 ?>

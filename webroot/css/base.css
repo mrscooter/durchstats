@@ -145,3 +145,7 @@ body {
 .small_heading{
     font-weight: bold;
 }
+
+.table_alternative_row {
+    background-color: #009933;
+}
