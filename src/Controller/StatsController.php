@@ -18,11 +18,11 @@ class StatsController extends AppController {
     
     private function playerStatsForView(array $matchCount, array $playersStats, array $yellowCardsStats){
         $statsForView = [
-            'allTime' => ['matches' => 0, 'goals' => 0, 'ownGoals' => 0, 'yellowCards' => 0, 'redCards' => 0]
+            'allTime' => ['matches' => 0, 'goals' => 0, 'ownGoals' => 0, 'yellowCards' => 0, 'redCards' => 0, 'redCards2' => 0]
         ];
         
         foreach($matchCount as $matchesInSeason){
-            $statsForView[$matchesInSeason['season_id']] = ['matches' => 0, 'goals' => 0, 'ownGoals' => 0, 'yellowCards' => 0, 'redCards' => 0];
+            $statsForView[$matchesInSeason['season_id']] = ['matches' => 0, 'goals' => 0, 'ownGoals' => 0, 'yellowCards' => 0, 'redCards' => 0, 'redCards2' => 0];
             $statsForView[$matchesInSeason['season_id']]['year'] = $matchesInSeason['year'];
             $statsForView[$matchesInSeason['season_id']]['matches'] = $matchesInSeason['count'];
             $statsForView['allTime']['matches'] += $matchesInSeason['count'];
@@ -49,8 +49,10 @@ class StatsController extends AppController {
         
         foreach($yellowCardsStats as $ystat){
             if($ystat['count'] == 2){
-                $statsForView[$ystat['season_id']]['redCards']++;
-                $statsForView['allTime']['redCards']++;
+                $statsForView[$ystat['season_id']]['redCards2']++;
+                $statsForView['allTime']['redCards2']++;
+                $statsForView[$ystat['season_id']]['yellowCards'] -= 2;
+                $statsForView['allTime']['yellowCards'] -= 2;
             }
         }
         
@@ -195,6 +197,7 @@ class StatsController extends AppController {
                 'goalsAgainst' => 0,
                 'yellowCards' => 0,
                 'redCards' => 0,
+                'redCards2' => 0
             ]
         ];
         
@@ -207,6 +210,7 @@ class StatsController extends AppController {
                     'goalsAgainst' => 0,
                     'yellowCards' => 0,
                     'redCards' => 0,
+                    'redCards2' => 0
                 ];
             $statsForView[$matchesInSeason['season_id']]['year'] = $matchesInSeason['year'];
             $statsForView[$matchesInSeason['season_id']]['matches'] = $matchesInSeason['count'];
@@ -236,8 +240,10 @@ class StatsController extends AppController {
         
         foreach($yellowCardsStats as $ystat){
             if($ystat['count'] == 2){
-                $statsForView[$ystat['season_id']]['redCards']++;
-                $statsForView['allTime']['redCards']++;
+                $statsForView[$ystat['season_id']]['redCards2']++;
+                $statsForView['allTime']['redCards2']++;
+                $statsForView[$ystat['season_id']]['yellowCards'] -= 2;
+                $statsForView['allTime']['yellowCards'] -= 2;
             }
         }
         
@@ -296,7 +302,6 @@ class StatsController extends AppController {
           ['club_id' => 'integer', "yellow_card_event_id" => "integer"])->fetchAll('assoc');
         
         $statsForView = $this->clubsPlayerStatsForView($playersMatchesForClubCount, $playersForClubStats, $playersForClubYellowCardStats);
-        debug($statsForView);
         $this->set('clubsPlayersStats',$statsForView);
     }
     
@@ -310,7 +315,8 @@ class StatsController extends AppController {
                     'goals' => 0,
                     'ownGoals' => 0,
                     'yellowCards' => 0,
-                    'redCards' => 0
+                    'redCards' => 0,
+                    'redCards2' => 0
                 ];
             $statsForView[$onePlayerMatchesCount['player_id']]['name'] = $onePlayerMatchesCount['name'];
             $statsForView[$onePlayerMatchesCount['player_id']]['surname'] = $onePlayerMatchesCount['surname'];
@@ -333,7 +339,8 @@ class StatsController extends AppController {
         
         foreach($playersForClubYellowCardStats as $ystat){
             if($ystat['count'] == 2){
-                $statsForView[$ystat['player_id']]['redCards']++;
+                $statsForView[$ystat['player_id']]['redCards2']++;
+                $statsForView[$ystat['player_id']]['yellowCards'] -= 2;
             }
         }
         
